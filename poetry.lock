@@ -243,6 +243,14 @@ python-versions = ">=3.6"
 cffi = {version = "*", markers = "implementation_name == \"pypy\""}
 
 [[package]]
+name = "readability"
+version = "0.3.1"
+description = "Measure the readability of a given text using surface characteristics"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "regex"
 version = "2022.10.31"
 description = "Alternative regular expression module, to replace re."
@@ -370,7 +378,7 @@ pyzmq = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "99a5503b131ab7d15756d7704055945202df494c88430c5297d37a135f8fff97"
+content-hash = "b5c43d8af0d19e1fda2f75337ddc8e6afd4acbcf8df64e7ae8ef14e0e4cefe58"
 
 [metadata.files]
 beautifulsoup4 = []
@@ -396,6 +404,7 @@ protobuf = []
 pycparser = []
 pygame = []
 pyzmq = []
+readability = []
 regex = []
 requests = []
 scipy = []

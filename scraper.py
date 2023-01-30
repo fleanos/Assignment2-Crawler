@@ -1,13 +1,13 @@
 import re
 from urllib.parse import urlparse
 
-from difflib import SequenceMatcher  #for similarity function
-from bs4 import BeautifulSoup  #extractLinks
+from difflib import SequenceMatcher  #for url similarity function
+from bs4 import BeautifulSoup  #extracting links
 from readability import Document #getting main body text and cleaning it
 from nltk.tokenize import word_tokenize  #for word counter function
-import requests  #for testLinks
 from collections import defaultdict
-import pickle
+import requests  #for testing links
+import pickle #for storing all info
 
 
 def scraper(url, resp):
@@ -15,15 +15,14 @@ def scraper(url, resp):
   return [link for link in links if is_valid(link)]
 
 #returns set with all links found in page
-def extractLinks(respContent) -> set:
+def extractLinks(respContent: bytes) -> set:
   soup = BeautifulSoup(respContent)
-  return set(i["href"] for i in soup.find_all("a", href = True))
-
+  return set(link["href"] for link in soup.find_all("a", href = True))
 
 #cleaning html content and tokenizing it, returning token frequencies
-def tokenFreq(htmlContent) -> dict:
+def tokenFreq(htmlContent: bytes) -> dict:
   content = Document(htmlContent)
-  cleanedContent = BeatifulSoup(content.summary(), "html.parser")
+  cleanedContent = BeautifulSoup(content.summary(), "html.parser")
 
   tokens = word_tokenize(cleanedContent.get_text())
 
@@ -34,7 +33,7 @@ def tokenFreq(htmlContent) -> dict:
   return dict(freqDict)
 
 #determing if current page is unqiue enough compared to prev. pages
-def contentSimilarity(allPagesFreq : dict, currentPageFreq : dict) -> float:
+def contentSimilarity(allPagesFreq: dict, currentPageFreq: dict) -> float:
   pass
 
 #handling of relative links - inputs all links set & page, returns list of links
@@ -47,8 +46,8 @@ def convertLinks(links: set, page) -> list:
     extractedLinks.append(parsedUrl)
   return extractedLinks
 
-def storeData(parsedPages : dict, page, freq : dict) -> None:
-  pass
+def storeData(parsedPages: dict, url: str, freq: dict) -> None:
+  pass #thinking of storing as {"url" : (freq dict, page length)}
 
 
 def extract_next_links(url, resp):
@@ -70,7 +69,7 @@ def extract_next_links(url, resp):
   if resp.status != 200: #unsuccessful request
     return []
 
-  if url in parsedPages["urls"]: #already parsed url and page
+  if url in parsedPages: #already parsed url and page
     return []
 
   #extracting freq of tokens
@@ -88,8 +87,8 @@ def extract_next_links(url, resp):
   #handle relative links
   links = convertLinks(allLinks, currentPage)
 
-  #save url, page, freq. dict
-  storeData(parsedPages, url, currentPage, frequencies)
+  #save url & freq. dict
+  storeData(parsedPages, url, frequencies)
 
   return links
 
