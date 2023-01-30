@@ -7,66 +7,22 @@ from readability import Document #getting main body text and cleaning it
 from nltk.tokenize import word_tokenize  #for word counter function
 import requests  #for testLinks
 from collections import defaultdict
+import pickle
 
 
 def scraper(url, resp):
   links = extract_next_links(url, resp)
   return [link for link in links if is_valid(link)]
 
+#returns set with all links found in page
+def extractLinks(respContent) -> set:
+  soup = BeautifulSoup(respContent)
+  return set(i["href"] for i in soup.find_all("a", href = True))
 
-def extractLinks(resp): #returns set with all links found in page
-  soup = BeautifulSoup(resp.raw_response.content)
-  return {i["href"] for i in soup.find_all("a", href = True)}
 
-"""
-import requests
-
-#testing whether each link in the set is broken or not by requesting it
-#returns a set of only valid links
-#assuming that all links will be in string
-def testLinks(setLinks):
-  for link in setLinks:
-    try:
-      response = requests.get('link')
-      if response != '200':
-        print(link, "was invalid:", response)
-    except:
-      print(link, "was invalid")
-  
-
-#some links are not full links
-def convertLinks(links):
-  pass
-  
-
-2. fuc for determining similarity between two urls - prob. use sequence matcher - inputs - html content, percentage threshold
-
-#check if the urls are gonna be in string(!)
-
-def similarity(url1, url2):
-  threshold = 0.95 #95% threshold
-  similarity = SequenceMatcher(None, url1, url2)
-  print(similarity.ratio()) #prints out the similarity ratio
-  if similarity.ratio() >= threshold: #check if the ratio passes the threshold
-    return similarity.ratio()
-  
-3.fuc to parse and count all words - inputs - html content, use ntlk for tokenizer
-
-from nltk.tokenize import word_tokenize
-
-def wordCounter (<html content1>, <html content2>): #reminder to actually input the parameters
-  firstTokens = word_tokenize(<html content1>)
-  secondTokens = word_tokenize(<html content2>)
-  count = 0
-  
-  for t in firstTokens:
-    if word in secondTokens:
-      count += 1  
-  return count 
-
-      
-def tokenFreq(resp):
-  content = Document(resp.raw_response.content)
+#cleaning html content and tokenizing it, returning token frequencies
+def tokenFreq(htmlContent) -> dict:
+  content = Document(htmlContent)
   cleanedContent = BeatifulSoup(content.summary(), "html.parser")
 
   tokens = word_tokenize(cleanedContent.get_text())
@@ -76,34 +32,23 @@ def tokenFreq(resp):
       freqDict[token] += 1
   
   return dict(freqDict)
-  
-  
-def extract_next_links(url, resp):
-  links = {}
-  parsedPages = load data file
-  currentPage = urlparse(resp.url)
 
-  if resp.status != 200: #unsuccessful request
-    return []
+#determing if current page is unqiue enough compared to prev. pages
+def contentSimilarity(allPagesFreq : dict, currentPageFreq : dict) -> float:
+  pass
 
-  if currentPage in parsedPages["pages"]: #already parsed url and page
-    return []
+#handling of relative links - inputs all links set & page, returns list of links
+def convertLinks(links: set, page) -> list:
+  extractedLinks = []
+  for link in links:
+    parsedUrl = urlparse(link)
+    if not parsedLink.netloc:
+      pass
+    extractedLinks.append(parsedUrl)
+  return extractedLinks
 
-  #extracting freq of tokens
-  frequency = tokenFreq(resp)
-
-  
-  
-  #testing similarity of current page to pages found before
-  
-
-
-
-
-  #if page isn't too similar to previous pages extract and filter links
-  
-  allLinks = extractLinks(resp) #set with all links in html content
-"""
+def storeData(parsedPages : dict, page, freq : dict) -> None:
+  pass
 
 
 def extract_next_links(url, resp):
@@ -117,7 +62,36 @@ def extract_next_links(url, resp):
   #         resp.raw_response.content: the content of the page!
   # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
 
-  return list()
+  if not path.exists("parsedPagesData.txt"): parsedPages = dict()
+  else: parsedPages = pickle.load(open("parsedPagesData.txt", "rb"))
+  
+  currentPage = urlparse(resp.url)
+
+  if resp.status != 200: #unsuccessful request
+    return []
+
+  if url in parsedPages["urls"]: #already parsed url and page
+    return []
+
+  #extracting freq of tokens
+  frequencies = tokenFreq(resp.raw_response.content)
+
+  #testing similarity of current page to pages found before
+  
+
+
+
+
+  #if page isn't too similar to previous pages extract links
+  allLinks = extractLinks(resp.raw_response.content)
+
+  #handle relative links
+  links = convertLinks(allLinks, currentPage)
+
+  #save url, page, freq. dict
+  storeData(parsedPages, url, currentPage, frequencies)
+
+  return links
 
 
 """
@@ -128,10 +102,14 @@ initally filter out any links not containing: - can use regex or find()
 *.informatics.uci.edu/*
 *.stat.uci.edu/
 
-prob - keep a set of all links previously visited
-make sure current link hasnt been visited before
+check for similarities for all previous links
 
-idk to check for similarities for all previous links here or not - would slow this fuc down a lot tho 
+def urlSimilarity(url1, url2):
+  threshold = 0.95 #95% threshold
+  similarity = SequenceMatcher(None, url1, url2)
+  print(similarity.ratio()) #prints out the similarity ratio
+  if similarity.ratio() >= threshold: #check if the ratio passes the threshold
+    return similarity.ratio()
 """
 
 
