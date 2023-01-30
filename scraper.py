@@ -3,8 +3,10 @@ from urllib.parse import urlparse
 
 from difflib import SequenceMatcher  #for similarity function
 from bs4 import BeautifulSoup  #extractLinks
+from readability import Document #getting main body text and cleaning it
 from nltk.tokenize import word_tokenize  #for word counter function
 import requests  #for testLinks
+from collections import defaultdict
 
 
 def scraper(url, resp):
@@ -12,27 +14,11 @@ def scraper(url, resp):
   return [link for link in links if is_valid(link)]
 
 
-"""
-Needed Helper Functions:
-
-idk how to use BeautifulSoup, lxml
-
-1. fuc for extracting all links in doc - inputs - html content, return set
-
-from bs4 import BeautifulSoup
-import re
-
-def extractLinks(resp):
+def extractLinks(resp): #returns set with all links found in page
   soup = BeautifulSoup(resp.raw_response.content)
-  
-  #links starting with https://
-  httpsLinks = {link for link in soup.find_all('a', attrs={'href': re.compile("^https://")})}
+  return {i["href"] for i in soup.find_all("a", href = True)}
 
-  #links starting with www.
-  wwwLinks = {link for link in soup.find_all('a', attrs={'href': re.compile("^//www.")})}
-
-  return httpsLinks + wwwLinks
-
+"""
 import requests
 
 #testing whether each link in the set is broken or not by requesting it
@@ -77,21 +63,46 @@ def wordCounter (<html content1>, <html content2>): #reminder to actually input 
     if word in secondTokens:
       count += 1  
   return count 
+
       
+def tokenFreq(resp):
+  content = Document(resp.raw_response.content)
+  cleanedContent = BeatifulSoup(content.summary(), "html.parser")
+
+  tokens = word_tokenize(cleanedContent.get_text())
+
+  freqDict = defaultdict(int)
+  for token in tokens: 
+      freqDict[token] += 1
+  
+  return dict(freqDict)
+  
+  
+def extract_next_links(url, resp):
+  links = {}
+  parsedPages = load data file
+  currentPage = urlparse(resp.url)
+
+  if resp.status != 200: #unsuccessful request
+    return []
+
+  if currentPage in parsedPages["pages"]: #already parsed url and page
+    return []
+
+  #extracting freq of tokens
+  frequency = tokenFreq(resp)
+
+  
+  
+  #testing similarity of current page to pages found before
+  
 
 
-Pseudocode for extract_next_links:
-call get all links - doesn't matter if valid links or not
-
-convert all links to their full urls
-
-call similarity between all links found, any links extremly similar to current link filter out
-
-call to parase content
-
-convert set to list and return
 
 
+  #if page isn't too similar to previous pages extract and filter links
+  
+  allLinks = extractLinks(resp) #set with all links in html content
 """
 
 
