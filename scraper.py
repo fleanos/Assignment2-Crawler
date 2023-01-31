@@ -87,6 +87,8 @@ def extract_next_links(url, resp):
   if resp.url in parsedUrls:
     return []
 
+  print("Scrapping:", url) #just to see if properly working
+  
   #extracting freq of tokens
   frequencies = tokenFreq(resp.raw_response.content)
 
@@ -107,14 +109,10 @@ def extract_next_links(url, resp):
 
 
 """
-initally filter out any links not containing: - can use regex or find()
-
 *.ics.uci.edu/*
 *.cs.uci.edu/*
 *.informatics.uci.edu/*
 *.stat.uci.edu/
-
-check for similarities for all previous links
 
 def urlSimilarity(url1, url2):
   threshold = 0.95 #95% threshold
