@@ -6,11 +6,13 @@ from difflib import SequenceMatcher  #for url similarity function
 from os import path
 import re
 import requests  #for testing links
+import pickle #for storing all info
 
+#packages that needed to be installed
 from bs4 import BeautifulSoup  #extracting links
 from readability import Document #getting main body text and cleaning it
+import nltk; nltk.download('punkt')
 from nltk.tokenize import word_tokenize  #for word counter function
-import pickle #for storing all info
 
 def scraper(url, resp):
   links = extract_next_links(url, resp)
@@ -26,7 +28,7 @@ def tokenFreq(htmlContent: bytes) -> dict:
   content = Document(htmlContent)
   cleanedContent = BeautifulSoup(content.summary(), "html.parser")
 
-  tokens = word_tokenize(cleanedContent.get_text())
+  tokens = word_tokenize((cleanedContent.get_text()).lower())
 
   freqDict = defaultdict(int)
   for token in tokens: 
@@ -61,7 +63,7 @@ def convertLinks(links: set, url) -> list:
 def storeData(parsedUrls: dict, url: str, freq: dict) -> None:
   pageLen = sum(freq.values())
   parsedUrls[url] = (freq, pageLen)
-  pickle.dump(parsedUrls, open("parsedPagesData.txt", "wb"))
+  pickle.dump(parsedUrls, open("parsedData.txt", "wb"))
 
 def extract_next_links(url, resp):
   # Implementation required.
@@ -78,8 +80,8 @@ def extract_next_links(url, resp):
   if resp.status != 200:
     return []
   
-  if not path.exists("parsedPagesData.txt"): parsedUrls = dict()
-  else: parsedUrls = pickle.load(open("parsedPagesData.txt", "rb"))
+  if not path.exists("parsedData.txt"): parsedUrls = dict()
+  else: parsedUrls = pickle.load(open("parsedData.txt", "rb"))
     
   #already parsed url and page
   if resp.url in parsedUrls:
@@ -131,25 +133,28 @@ def is_valid(url):
     if parsed.scheme not in set(["http", "https"]):
       return False
 
-    if not path.exists("parsedPagesData.txt"): parsedUrls = dict()
-    else: parsedUrls = pickle.load(open("parsedPagesData.txt", "rb"))
+    domains = [".ics.uci.edu",".cs.uci.edu",".informatics.uci.edu",".stat.uci.edu"]
+    
+    tot = 0
+    for i in domains:
+      tot += str(parsed.netloc).lower().find(i)
+    
+    if tot == -1 * len(domains): 
+      return False
+    
+    if not path.exists("parsedData.txt"): parsedUrls = dict()
+    else: parsedUrls = pickle.load(open("parsedData.txt", "rb"))
     
     if url in parsedUrls:
       return False
-      
-    domains = {".ics.uci.edu", ".cs.uci.edu", ".informatics.uci.edu", ".stat.uci.edu"}
     
-    if domains & set(parsed.netloc) == 0: 
-      return False
-      
     return not re.match(
       r".*\.(css|js|bmp|gif|jpe?g|ico" + r"|png|tiff?|mid|mp2|mp3|mp4" +
       r"|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" +
       r"|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names" +
       r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso" +
       r"|epub|dll|cnf|tgz|sha1" + r"|thmx|mso|arff|rtf|jar|csv" +
-      r"|rm|smil|wmv|swf|wma|zip|rar|gz|#respond|#comment" +
-      r"wp-content/uploads|?cal|?share=|?replytocom)$", parsed.path.lower())
+      r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
 
   except TypeError:
     print("TypeError for ", parsed)
