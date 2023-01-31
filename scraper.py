@@ -18,7 +18,7 @@ def scraper(url, resp):
 
 #returns set with all links found in page
 def extractLinks(respContent: bytes) -> set:
-  soup = BeautifulSoup(respContent, 'html.parser')
+  soup = BeautifulSoup(respContent, "html.parser")
   return set(link["href"] for link in soup.find_all("a", href = True))
 
 #cleaning html content and tokenizing it, returning token frequencies
@@ -35,8 +35,17 @@ def tokenFreq(htmlContent: bytes) -> dict:
   return dict(freqDict)
 
 #determing if current page is unqiue enough compared to prev. pages
-def contentSimilarity(allPagesFreq: dict, currentFreq: dict, currentPage) -> float:
-  return 0.0 #idk yet what to compare maybe freq len and shared tokens
+def contentSimilar(allPagesFreq: dict, currentFreq: dict) -> float:
+  #used slightly modded Jaccard Sim. from https://www.statology.org/jaccard-similarity-python/
+  def jaccard(set1, set2):
+    intersection = len(set(set1).intersection(set2))
+    union = (len(set1) + len(set2)) - intersection
+    return float(intersection) / union
+
+  currentTokens = set(currentFreq.keys())
+  for i in allPagesFreq.values():
+    if jaccard(set(i[0].keys()), currentTokens) >= 0.9: return True
+  return False
 
 #handling of relative links - inputs all links set & page, returns list of links
 def convertLinks(links: set, url) -> list:
@@ -65,15 +74,13 @@ def extract_next_links(url, resp):
   #         resp.raw_response.content: the content of the page!
   # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
 
-  if not path.exists("parsedPagesData.txt"): parsedUrls = dict()
-  else: parsedUrls = pickle.load(open("parsedPagesData.txt", "rb"))
-  
-  currentPage = urlparse(resp.url)
-
   #unsuccessful request
   if resp.status != 200:
     return []
-
+  
+  if not path.exists("parsedPagesData.txt"): parsedUrls = dict()
+  else: parsedUrls = pickle.load(open("parsedPagesData.txt", "rb"))
+    
   #already parsed url and page
   if resp.url in parsedUrls:
     return []
@@ -82,7 +89,7 @@ def extract_next_links(url, resp):
   frequencies = tokenFreq(resp.raw_response.content)
 
   #testing similarity of current page to pages found before
-  if contentSimilarity(parsedUrls, frequencies, currentPage) > 0.95:
+  if contentSimilar(parsedUrls, frequencies):
     return []
 
   #save url & freq. dict
