@@ -3,8 +3,11 @@ from scraper import *
 
 x = requests.get('http://www.ics.uci.edu')
 
-allLinks = extractLinks(x.content)
-print(allLinks)
+currentPage = urlparse('http://www.ics.uci.edu')
 
-frequencies = tokenFreq(x.content)
-print(frequencies)
+allLinks = extractLinks(x.content)
+
+links = convertLinks(allLinks, 'http://www.ics.uci.edu')
+print(links)
+
+#frequencies = tokenFreq(x.content)
