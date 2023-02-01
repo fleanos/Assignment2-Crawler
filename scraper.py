@@ -63,9 +63,16 @@ def storeData(parsedUrls: list, url: str, freq: dict) -> None:
   parsedUrls[0][url] = (freq, pageLen)
   pickle.dump(parsedUrls, open("parsedData.txt", "wb"))
 
-def storeBadUrl(parsedUrls: list, url: str):
+def storeEncounteredUrl(parsedUrls: list, url: str):
   parsedUrls[1].add(url)
   pickle.dump(parsedUrls, open("parsedData.txt", "wb"))
+
+def storeFileLink(url: str) -> None:
+  if not path.exists("fileUrls.txt"): fileUrls = set()
+  else: fileUrls = pickle.load(open("fileUrls.txt", "rb"))
+
+  fileUrls.add(url)
+  pickle.dump(fileUrls, open("fileUrls.txt", "wb"))
   
 def extract_next_links(url, resp):
   # Implementation required.
@@ -81,15 +88,16 @@ def extract_next_links(url, resp):
   
   if not path.exists("parsedData.txt"): parsedUrls = [dict(), set()]
   else: parsedUrls = pickle.load(open("parsedData.txt", "rb"))
+
+  #already parsed url and page
+  if resp.url in parsedUrls[1]:
+    return []
     
   #unsuccessful request
   if resp.status != 200:
-    storeBadUrl(parsedUrls, resp.url)
     return []
-    
-  #already parsed url and page
-  if (resp.url in parsedUrls[0]) or (resp.url in parsedUrls[1]):
-    return []
+
+  storeEncounteredUrl(parsedUrls, resp.url)
 
   print("Scrapping:", url) #just to see if properly working
   
@@ -99,14 +107,13 @@ def extract_next_links(url, resp):
   try:
     contentSummary = content.summary()
   except readability.readability.Unparseable:
-    storeBadUrl(parsedUrls, resp.url)
+    storeFileLink(url)
     return []
 
   frequencies = tokenFreq(contentSummary)
 
   #testing similarity of current page to pages found before
   if (len(frequencies) < 10) or contentSimilar(parsedUrls, frequencies):
-    storeBadUrl(parsedUrls, resp.url)
     return []
 
   #save url & freq. dict
@@ -134,25 +141,27 @@ def urlSimilarity(url1, url2):
   if similarity.ratio() >= threshold: #check if the ratio passes the threshold
     return similarity.ratio()
 """
+def storeUrls(allUrls: list, url: str) -> None:
+  allUrls.add(url)
+  pickle.dump(allUrls, open("allLinks.txt", "wb"))
 
+  
 def is_valid(url):
   # Decide whether to crawl this url or not.
   # If you decide to crawl it, return True; otherwise return False.
   # There are already some conditions that return False.
-  
-  def urlSimilarity(url1, url2):
-    threshold = 0.95 #95% threshold
-    similarity = SequenceMatcher(None, url1, url2)
-    print(similarity.ratio()) #prints out the similarity ratio
-    if similarity.ratio() >= threshold: #check if the ratio passes the threshold
-      return True
-    return False
       
   try:
     parsed = urlparse(url)
     if parsed.scheme not in set(["http", "https"]):
       return False
 
+    if not path.exists("allLinks.txt"): prevUrls = set()
+    else: prevUrls = pickle.load(open("allLinks.txt", "rb"))
+    
+    if url in prevUrls:
+      return False
+      
     domains = [".ics.uci.edu",".cs.uci.edu",".informatics.uci.edu",".stat.uci.edu"]
     
     tot = 0
@@ -162,18 +171,13 @@ def is_valid(url):
     if tot == -1 * len(domains): 
       return False
 
+    storeUrls(prevUrls, url) #store urls within ics dep.
+    
     if url.find("/files/pdf") != -1:
       return False
 
     if url.endswith(".DS_Store"):
       return False
-    
-    if not path.exists("parsedData.txt"): parsedUrls = [dict(), set()]
-    else: parsedUrls = pickle.load(open("parsedData.txt", "rb"))
-    
-    if (url in parsedUrls[0]) or (url in parsedUrls[1]):
-      return False
-
       
     return not re.match(
       r".*\.(css|js|bmp|gif|jpe?g|ico" + r"|png|tiff?|mid|mp2|mp3|mp4" +
