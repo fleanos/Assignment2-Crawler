@@ -1,11 +1,15 @@
 from scraper import *
+import readability
+import requests  #for testing links
+import lxml
 
-
+"""
 x = requests.get('http://www.ics.uci.edu')
 
-if not path.exists("parsedData.txt"): parsedUrls = dict()
+if not path.exists("parsedData.txt"): parsedUrls = [dict(), set()]
 else: parsedUrls = pickle.load(open("parsedData.txt", "rb"))
 
+print(len(x.content))
 frequencies = tokenFreq(x.content)
 if contentSimilar(parsedUrls, frequencies):
     print("Content Sim.")
@@ -16,25 +20,31 @@ allLinks = extractLinks(x.content)
 links = convertLinks(allLinks, 'http://www.ics.uci.edu')
 print(links)
 
-
+"""
 print()
 
-y = requests.get("https://www.ics.uci.edu/ugrad/sao/index")
+y = requests.get("http://flamingo.ics.uci.edu/.DS_Store")
 
-if not path.exists("parsedData.txt"): parsedUrls = dict()
+if not path.exists("parsedData.txt"): parsedUrls = [dict(), set()]
 else: parsedUrls = pickle.load(open("parsedData.txt", "rb"))
 
-frequencies = tokenFreq(y.content)
+print(len(y.content))
+content = Document(y.content)
+try:
+  contentSummary = content.summary()
+except readability.readability.Unparseable:
+  print(print("hi"))
+frequencies = tokenFreq(contentSummary)
 if contentSimilar(parsedUrls, frequencies):
     print("Content Sim.")
 
-storeData(parsedUrls, "https://www.ics.uci.edu/ugrad/sao/index", frequencies)
+storeData(parsedUrls, "http://flamingo.ics.uci.edu/.DS_Store", frequencies)
 
 allLinks = extractLinks(y.content)
-links = convertLinks(allLinks, "https://www.ics.uci.edu/ugrad/sao/index")
+links = convertLinks(allLinks, "http://flamingo.ics.uci.edu/.DS_Store")
 print(links)
 
-if not path.exists("parsedData.txt"): parsedUrls = dict()
+if not path.exists("parsedData.txt"): parsedUrls = [dict(), set()]
 else: parsedUrls = pickle.load(open("parsedData.txt", "rb"))
 print(parsedUrls)
 
@@ -54,3 +64,5 @@ print(is_valid("https://communications.uci.edu/documents/pdf/UCI_14_map_campus.p
 
 #true
 print(is_valid("http://www.ics.uci.edu/ugrad/QA_Graduation"))
+
+#handle_failures="discard"

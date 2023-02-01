@@ -5,7 +5,6 @@ from collections import defaultdict
 from difflib import SequenceMatcher  #for url similarity function
 from os import path
 import re
-import requests  #for testing links
 import pickle #for storing all info
 
 #packages that needed to be installed
@@ -24,9 +23,8 @@ def extractLinks(respContent: bytes) -> set:
   return set(link["href"] for link in soup.find_all("a", href = True))
 
 #cleaning html content and tokenizing it, returning token frequencies
-def tokenFreq(htmlContent: bytes) -> dict:
-  content = Document(htmlContent)
-  cleanedContent = BeautifulSoup(content.summary(), "html.parser")
+def tokenFreq(contentSummary) -> dict:
+  cleanedContent = BeautifulSoup(contentSummary, "html.parser")
 
   tokens = word_tokenize((cleanedContent.get_text()).lower())
 
@@ -37,7 +35,7 @@ def tokenFreq(htmlContent: bytes) -> dict:
   return dict(freqDict)
 
 #determing if current page is unqiue enough compared to prev. pages
-def contentSimilar(allPagesFreq: dict, currentFreq: dict) -> float:
+def contentSimilar(allPagesFreq: list, currentFreq: dict) -> float:
   #used slightly modded Jaccard Sim. from https://www.statology.org/jaccard-similarity-python/
   def jaccard(set1, set2):
     intersection = len(set(set1).intersection(set2))
@@ -45,7 +43,7 @@ def contentSimilar(allPagesFreq: dict, currentFreq: dict) -> float:
     return float(intersection) / union
 
   currentTokens = set(currentFreq.keys())
-  for i in allPagesFreq.values():
+  for i in (allPagesFreq[0]).values():
     if jaccard(set(i[0].keys()), currentTokens) >= 0.9: return True
   return False
 
@@ -60,11 +58,15 @@ def convertLinks(links: set, url) -> list:
       extractedLinks.append(link)
   return extractedLinks
 
-def storeData(parsedUrls: dict, url: str, freq: dict) -> None:
+def storeData(parsedUrls: list, url: str, freq: dict) -> None:
   pageLen = sum(freq.values())
-  parsedUrls[url] = (freq, pageLen)
+  parsedUrls[0][url] = (freq, pageLen)
   pickle.dump(parsedUrls, open("parsedData.txt", "wb"))
 
+def storeBadUrl(parsedUrls: list, url: str):
+  parsedUrls[1].add(url)
+  pickle.dump(parsedUrls, open("parsedData.txt", "wb"))
+  
 def extract_next_links(url, resp):
   # Implementation required.
   # url: the URL that was used to get the page
@@ -76,24 +78,35 @@ def extract_next_links(url, resp):
   #         resp.raw_response.content: the content of the page!
   # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
 
-  #unsuccessful request
-  if resp.status != 200:
-    return []
   
-  if not path.exists("parsedData.txt"): parsedUrls = dict()
+  if not path.exists("parsedData.txt"): parsedUrls = [dict(), set()]
   else: parsedUrls = pickle.load(open("parsedData.txt", "rb"))
     
+  #unsuccessful request
+  if resp.status != 200:
+    storeBadUrl(parsedUrls, resp.url)
+    return []
+    
   #already parsed url and page
-  if resp.url in parsedUrls:
+  if (resp.url in parsedUrls[0]) or (resp.url in parsedUrls[1]):
     return []
 
   print("Scrapping:", url) #just to see if properly working
   
   #extracting freq of tokens
-  frequencies = tokenFreq(resp.raw_response.content)
+  content = Document(resp.raw_response.content)
+  
+  try:
+    contentSummary = content.summary()
+  except readability.readability.Unparseable:
+    storeBadUrl(parsedUrls, resp.url)
+    return []
+
+  frequencies = tokenFreq(contentSummary)
 
   #testing similarity of current page to pages found before
-  if contentSimilar(parsedUrls, frequencies):
+  if (len(frequencies) < 10) or contentSimilar(parsedUrls, frequencies):
+    storeBadUrl(parsedUrls, resp.url)
     return []
 
   #save url & freq. dict
@@ -126,6 +139,15 @@ def is_valid(url):
   # Decide whether to crawl this url or not.
   # If you decide to crawl it, return True; otherwise return False.
   # There are already some conditions that return False.
+  
+  def urlSimilarity(url1, url2):
+    threshold = 0.95 #95% threshold
+    similarity = SequenceMatcher(None, url1, url2)
+    print(similarity.ratio()) #prints out the similarity ratio
+    if similarity.ratio() >= threshold: #check if the ratio passes the threshold
+      return True
+    return False
+      
   try:
     parsed = urlparse(url)
     if parsed.scheme not in set(["http", "https"]):
@@ -135,24 +157,31 @@ def is_valid(url):
     
     tot = 0
     for i in domains:
-      tot += str(parsed.netloc).lower().find(i)
+      tot += parsed.netloc.lower().find(i)
     
     if tot == -1 * len(domains): 
       return False
-    
-    if not path.exists("parsedData.txt"): parsedUrls = dict()
-    else: parsedUrls = pickle.load(open("parsedData.txt", "rb"))
-    
-    if url in parsedUrls:
+
+    if url.find("/files/pdf") != -1:
+      return False
+
+    if url.endswith(".DS_Store"):
       return False
     
+    if not path.exists("parsedData.txt"): parsedUrls = [dict(), set()]
+    else: parsedUrls = pickle.load(open("parsedData.txt", "rb"))
+    
+    if (url in parsedUrls[0]) or (url in parsedUrls[1]):
+      return False
+
+      
     return not re.match(
       r".*\.(css|js|bmp|gif|jpe?g|ico" + r"|png|tiff?|mid|mp2|mp3|mp4" +
       r"|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" +
       r"|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names" +
       r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso" +
       r"|epub|dll|cnf|tgz|sha1" + r"|thmx|mso|arff|rtf|jar|csv" +
-      r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
+      r"|rm|smil|wmv|swf|wma|zip|rar|gz|war)$", parsed.path.lower())
 
   except TypeError:
     print("TypeError for ", parsed)
