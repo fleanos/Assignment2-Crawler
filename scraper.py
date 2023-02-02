@@ -2,7 +2,6 @@ from urllib.parse import urlparse
 from urllib.parse import urljoin
 
 from collections import defaultdict
-from difflib import SequenceMatcher  #for url similarity function
 from os import path
 import re
 import pickle #for storing all info
@@ -13,6 +12,7 @@ import readability
 from readability import Document #getting main body text and cleaning it
 import nltk; nltk.download('punkt')
 from nltk.tokenize import word_tokenize  #for word counter function
+import lxml
 
 def scraper(url, resp):
   links = extract_next_links(url, resp)
@@ -94,13 +94,13 @@ def extract_next_links(url, resp):
   if resp.url in parsedUrls[1]:
     return []
     
+  storeEncounteredUrl(parsedUrls, resp.url)
+  
   #unsuccessful request
   if resp == None: return []
   if resp.status != 200: return []
   if resp.raw_response == None: return []
   if resp.raw_response.content == None: return []
-
-  storeEncounteredUrl(parsedUrls, resp.url)
 
   print("Scrapping:", url) #just to see if properly working
   
@@ -136,14 +136,8 @@ def extract_next_links(url, resp):
 *.cs.uci.edu/*
 *.informatics.uci.edu/*
 *.stat.uci.edu/
-
-def urlSimilarity(url1, url2):
-  threshold = 0.95 #95% threshold
-  similarity = SequenceMatcher(None, url1, url2)
-  print(similarity.ratio()) #prints out the similarity ratio
-  if similarity.ratio() >= threshold: #check if the ratio passes the threshold
-    return similarity.ratio()
 """
+
 def storeUrls(allUrls: list, url: str) -> None:
   allUrls.add(url)
   pickle.dump(allUrls, open("allLinks.txt", "wb"))
@@ -188,7 +182,7 @@ def is_valid(url):
       r"|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names" +
       r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso" +
       r"|epub|dll|cnf|tgz|sha1" + r"|thmx|mso|arff|rtf|jar|csv" +
-      r"|rm|smil|wmv|swf|wma|zip|rar|gz|war)$", parsed.path.lower())
+      r"|rm|smil|wmv|swf|wma|zip|rar|gz|war|mpg)$", parsed.path.lower())
 
   except TypeError:
     print("TypeError for ", parsed)
