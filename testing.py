@@ -33,7 +33,8 @@ content = Document(y.content)
 try:
   contentSummary = content.summary()
 except readability.readability.Unparseable:
-  print(print("hi"))
+  storeFileLink("http://flamingo.ics.uci.edu/.DS_Store")
+  print("Doesn't error when not html")
 frequencies = tokenFreq(contentSummary)
 if contentSimilar(parsedUrls, frequencies):
     print("Content Sim.")

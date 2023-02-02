@@ -9,6 +9,7 @@ import pickle #for storing all info
 
 #packages that needed to be installed
 from bs4 import BeautifulSoup  #extracting links
+import readability
 from readability import Document #getting main body text and cleaning it
 import nltk; nltk.download('punkt')
 from nltk.tokenize import word_tokenize  #for word counter function
@@ -94,8 +95,10 @@ def extract_next_links(url, resp):
     return []
     
   #unsuccessful request
-  if resp.status != 200:
-    return []
+  if resp == None: return []
+  if resp.status != 200: return []
+  if resp.raw_response == None: return []
+  if resp.raw_response.content == None: return []
 
   storeEncounteredUrl(parsedUrls, resp.url)
 
