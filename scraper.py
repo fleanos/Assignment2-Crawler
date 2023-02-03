@@ -1,6 +1,5 @@
 from urllib.parse import urlparse
 from urllib.parse import urljoin
-from urllib.parse import urldefrag
 
 from collections import defaultdict
 from os import path
@@ -80,8 +79,8 @@ def extract_next_links(url, resp):
   #         resp.raw_response.content: the content of the page!
   # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
 
-  urlDeFrag = urldefrag(url)
-  url = urlDeFrag.url
+  parsedUrl = urlparse(resp.url)
+  url = parsedUrl.scheme + "://" + parsedUrl.netloc + parsedUrl.path
   
   if not path.exists("parsedData.txt"): parsedUrls = [dict(), set()]
   else: parsedUrls = pickle.load(open("parsedData.txt", "rb"))
@@ -130,27 +129,14 @@ def extract_next_links(url, resp):
 *.stat.uci.edu/
 """
 
-def storeUrls(allUrls: list, url: str) -> None:
-  allUrls.add(url)
-  pickle.dump(allUrls, open("allLinks.txt", "wb"))
-
 def is_valid(url):
   # Decide whether to crawl this url or not.
   # If you decide to crawl it, return True; otherwise return False.
   # There are already some conditions that return False.
       
   try:
-    urlDeFrag = urldefrag(url)
-    url = urlDeFrag.url
-    
     parsed = urlparse(url)
     if parsed.scheme not in set(["http", "https"]):
-      return False
-
-    if not path.exists("allLinks.txt"): prevUrls = set()
-    else: prevUrls = pickle.load(open("allLinks.txt", "rb"))
-    
-    if url in prevUrls:
       return False
       
     domains = [".ics.uci.edu",".cs.uci.edu",".informatics.uci.edu",".stat.uci.edu"]
@@ -160,10 +146,11 @@ def is_valid(url):
       tot += parsed.netloc.lower().find(i)
     
     if tot == -4: return False
-
-    storeUrls(prevUrls, url) #store urls within ics dep.
     
-    if url.find("/files/pdf") != -1 or url.endswith(".DS_Store"):
+    if url.find("/files/pdf") != -1 or url.find("/wp-content/uploads") != -1:
+      return False
+    
+    if url.endswith(".DS_Store"):
       return False
       
     return not re.match(
