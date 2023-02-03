@@ -1,5 +1,6 @@
 from urllib.parse import urlparse
 from urllib.parse import urljoin
+from urllib.parse import urldefrag
 
 from collections import defaultdict
 from os import path
@@ -67,13 +68,6 @@ def storeData(parsedUrls: list, url: str, freq: dict) -> None:
 def storeEncounteredUrl(parsedUrls: list, url: str):
   parsedUrls[1].add(url)
   pickle.dump(parsedUrls, open("parsedData.txt", "wb"))
-
-def storeFileLink(url: str) -> None:
-  if not path.exists("fileUrls.txt"): fileUrls = set()
-  else: fileUrls = pickle.load(open("fileUrls.txt", "rb"))
-
-  fileUrls.add(url)
-  pickle.dump(fileUrls, open("fileUrls.txt", "wb"))
   
 def extract_next_links(url, resp):
   # Implementation required.
@@ -86,23 +80,22 @@ def extract_next_links(url, resp):
   #         resp.raw_response.content: the content of the page!
   # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
 
+  urlDeFrag = urldefrag(url)
+  url = urlDeFrag.url
   
   if not path.exists("parsedData.txt"): parsedUrls = [dict(), set()]
   else: parsedUrls = pickle.load(open("parsedData.txt", "rb"))
 
   #already parsed url and page
-  if resp.url in parsedUrls[1]:
-    return []
+  if url in parsedUrls[1]: return []
     
-  storeEncounteredUrl(parsedUrls, resp.url)
+  storeEncounteredUrl(parsedUrls, url)
   
   #unsuccessful request
   if resp == None: return []
   if resp.status != 200: return []
   if resp.raw_response == None: return []
   if resp.raw_response.content == None: return []
-
-  print("Scrapping:", url) #just to see if properly working
   
   #extracting freq of tokens
   content = Document(resp.raw_response.content)
@@ -110,7 +103,6 @@ def extract_next_links(url, resp):
   try:
     contentSummary = content.summary()
   except readability.readability.Unparseable:
-    storeFileLink(url)
     return []
 
   frequencies = tokenFreq(contentSummary)
@@ -120,13 +112,13 @@ def extract_next_links(url, resp):
     return []
 
   #save url & freq. dict
-  storeData(parsedUrls, resp.url, frequencies)
+  storeData(parsedUrls, url, frequencies)
   
   #if page isn't too similar to previous pages extract links
   allLinks = extractLinks(resp.raw_response.content)
 
   #handle relative links
-  links = convertLinks(allLinks, resp.url)
+  links = convertLinks(allLinks, url)
 
   return links
 
@@ -142,13 +134,15 @@ def storeUrls(allUrls: list, url: str) -> None:
   allUrls.add(url)
   pickle.dump(allUrls, open("allLinks.txt", "wb"))
 
-  
 def is_valid(url):
   # Decide whether to crawl this url or not.
   # If you decide to crawl it, return True; otherwise return False.
   # There are already some conditions that return False.
       
   try:
+    urlDeFrag = urldefrag(url)
+    url = urlDeFrag.url
+    
     parsed = urlparse(url)
     if parsed.scheme not in set(["http", "https"]):
       return False
@@ -165,15 +159,11 @@ def is_valid(url):
     for i in domains:
       tot += parsed.netloc.lower().find(i)
     
-    if tot == -1 * len(domains): 
-      return False
+    if tot == -4: return False
 
     storeUrls(prevUrls, url) #store urls within ics dep.
     
-    if url.find("/files/pdf") != -1:
-      return False
-
-    if url.endswith(".DS_Store"):
+    if url.find("/files/pdf") != -1 or url.endswith(".DS_Store"):
       return False
       
     return not re.match(
