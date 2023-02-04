@@ -53,20 +53,20 @@ def convertLinks(links: set, url) -> list:
   extractedLinks = []
   for link in links:
     parsedUrl = urlparse(link)
-    if not parsedUrl.netloc:
-      extractedLinks.append(urljoin(url, link))
-    else:
-      extractedLinks.append(link)
-  return extractedLinks
+    temp = link
+    if not parsedUrl.netloc: temp = urljoin(url, link)
+    parsedTemp = urlparse(temp)
+    extractedLinks.add(parsedTemp.scheme + "://" + parsedTemp.netloc + parsedTemp.path)
+  return list(extractedLinks)
 
 def storeData(parsedUrls: list, url: str, freq: dict) -> None:
   pageLen = sum(freq.values())
   parsedUrls[0][url] = (freq, pageLen)
-  pickle.dump(parsedUrls, open("parsedData.txt", "wb"))
+  pickle.dump(parsedUrls, open("parsedData.txt", "wb"), pickle.HIGHEST_PROTOCOL)
 
 def storeEncounteredUrl(parsedUrls: list, url: str):
   parsedUrls[1].add(url)
-  pickle.dump(parsedUrls, open("parsedData.txt", "wb"))
+  pickle.dump(parsedUrls, open("parsedData.txt", "wb"), pickle.HIGHEST_PROTOCOL)
   
 def extract_next_links(url, resp):
   # Implementation required.
@@ -150,7 +150,10 @@ def is_valid(url):
     if url.find("/files/pdf") != -1 or url.find("/wp-content/uploads") != -1:
       return False
     
-    if url.endswith(".DS_Store"):
+    if url.endswith(".DS_Store") or url.endswith("#branding"):
+      return False
+
+    if url.endswith("#comments") or url.endswith("#respond"):
       return False
       
     return not re.match(
